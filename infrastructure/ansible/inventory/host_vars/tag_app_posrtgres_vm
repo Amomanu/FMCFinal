@@ -1,0 +1,24 @@
+beats_version: 7.4.1
+beat_conf:
+  filebeat.config.modules.path: ./modules.d/*.yml
+  filebeat.modules:
+    - module: postgresql
+  setup.kibana:
+    host: "domain:443"
+    protocol: "https"
+    username: "elastic"
+    password: "elastic"
+  setup.ilm.enabled: true
+  setup.ilm.check_exists: false
+  setup.ilm.overwrite: true
+  setup.ilm.policy_file: /usr/share/filebeat/ilm.json
+
+output_conf:
+    elasticsearch:
+      hosts: ["https://domain:443"]
+      username: elastic
+      password: elastic
+
+ilm_file: "/usr/share/filebeat/ilm.json"
+ingest_filebeat_modules:
+ - postgresql

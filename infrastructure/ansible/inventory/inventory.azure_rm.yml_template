@@ -1,0 +1,24 @@
+# The dependencies required can be installed with: pip install 'ansible[azure]'
+# https://docs.ansible.com/ansible/latest/scenario_guides/guide_azure.html
+
+plugin: azure_rm
+
+auth_source: cli
+
+include_vm_resource_groups:
+- '__NEW_ENVIRONMENT_NAME__'
+
+hostvar_expressions:
+  ansible_host: (public_dns_hostnames + public_ipv4_addresses) | first
+
+keyed_groups:
+# places each host in a group named 'tag_(tag name)_(tag value)' for each tag on a VM.
+- prefix: tag
+  key: tags
+# places each host in a group named 'azure_loc_(location name)', depending on the VM's location
+- prefix: azure_loc
+  key: location
+# places host in a group named 'some_tag_X' using the value of the 'sometag' tag on a VM as X, and defaulting to the
+# value 'none' (eg, the group 'some_tag_none') if the 'sometag' tag is not defined for a VM.
+- prefix: env
+  key: tags.env | default('none')

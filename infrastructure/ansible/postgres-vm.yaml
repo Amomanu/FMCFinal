@@ -1,0 +1,19 @@
+- hosts: '{{ playbook_hosts }}'
+  become: yes
+  roles:
+  - { role: postgresql-vm, db_password: "{{ db_password }}" }
+  - { role: prometheus-node-exporter }
+  remote_user: ubuntu
+
+#- name: Filebeat
+#  hosts: tag_app_posrtgres_vm
+#  become: true
+#  remote_user: ubuntu
+#  roles:
+#  - { role: elastic-beats, tags: filebeat }
+#
+#- name: Prometheus Node Exporters
+#  hosts: all
+#  become: true
+#  roles:
+#  - { role: prometheus-node-exporter, tags: prometheus-node-exporter }

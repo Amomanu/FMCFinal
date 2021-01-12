@@ -1,0 +1,6 @@
+- name: Filebeat
+  hosts:  '{{ playbook_hosts }}'
+  become: true
+  remote_user: ubuntu
+  roles:
+  - { role: elastic-beats, tags: filebeat }

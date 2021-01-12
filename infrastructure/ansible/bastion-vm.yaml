@@ -1,0 +1,5 @@
+- hosts: '{{ playbook_hosts }}'
+  become: yes
+  roles:
+  - { role: bastion-vm }
+  remote_user: ubuntu
