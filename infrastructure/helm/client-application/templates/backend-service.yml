@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ .Values.backend.name }}-{{ .Values.env }}
+  name: {{ .Release.Name }}-backend
+spec:
+  ports:
+  - name: {{ .Values.backend.name }}-{{ .Values.env }}
+    port: 8000
+    protocol: TCP
+    targetPort: 8000
+  selector:
+    app: {{ .Values.backend.name }}-{{ .Values.env }}

@@ -1,0 +1,56 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.executor_name }}-{{ .Values.env }}
+  name: prometheus-am-executor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.executor_name }}-{{ .Values.env }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.executor_name }}-{{ .Values.env }}
+    spec:
+      containers:
+        - name: prometheus-am-executor
+          image: "srinathkotu/prometheus-am-executor"
+          imagePullPolicy: Always
+          args: ["./executor.sh"]
+          ports:
+            - containerPort: 8080
+          env:
+            - name: REGION
+              value: {{ .Values.region }}
+            - name: CLUSTER_ID
+              value: {{ .Values.cluster_id }}
+            - name: AAD_CLIENT_ID
+              value: {{ .Values.aadClientId }}
+            - name: TENANT_ID
+              value: {{ .Values.tenantId }}
+            - name: CLIENT_SECRET
+              value: {{ .Values.aadClientSecret }}
+          volumeMounts:
+            - name: executor-script
+              mountPath: /executor.sh
+              subPath: executor.sh
+            - name: azure-json
+              mountPath: /azure.json
+      volumes:
+          - name: executor-script
+            configMap:
+              name: executor-script
+              defaultMode: 0755
+          - name: azure-json
+            hostPath:
+              path: /etc/kubernetes/azure.json
+              type: File
+      restartPolicy: Always

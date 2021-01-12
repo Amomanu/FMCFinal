@@ -1,0 +1,31 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ .Values.celery.name }}-{{ .Values.env }}
+  name: {{ .Release.Name }}-celery
+spec:
+  ports:
+  - name: {{ .Values.celery.name }}-{{ .Values.env }}
+    port: 8008
+    protocol: TCP
+    targetPort: 8008
+  selector:
+    app: {{ .Values.celery.name }}-{{ .Values.env }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ .Values.flower.name }}-{{ .Values.env }}
+  name: {{ .Release.Name }}-flower
+spec:
+  ports:
+  - name: {{ .Values.flower.name }}-{{ .Values.env }}
+    port: 5555
+    protocol: TCP
+    targetPort: 5555
+  selector:
+    app: {{ .Values.flower.name }}-{{ .Values.env }}

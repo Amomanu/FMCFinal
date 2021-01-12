@@ -1,0 +1,21 @@
+{{- range .Values.services }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .name }}
+{{- if .namespace }}
+  namespace: {{ .namespace }}
+{{- end }}
+{{- if .labels }}
+  labels:
+{{ toYaml .labels | indent 4 }}
+{{- end }}
+{{- if .annotations }}
+  annotations:
+{{ toYaml .annotations | indent 4 }}
+{{- end }}
+spec:
+  type: ExternalName
+  externalName: {{ .externalName }}
+{{- end }}

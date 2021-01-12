@@ -1,0 +1,62 @@
+# Filebeat configuration to send docker logs and authenticate in ES
+filebeatConfig:
+  filebeat.yml: |
+    filebeat.inputs:
+    - type: docker
+      containers.ids:
+      - '*'
+      processors:
+      - add_kubernetes_metadata:
+          in_cluster: true
+      #- drop_event:
+      #    when.not.equals:
+      #      kubernetes.container.name: "backendweb-demo"
+      json.ignore_decoding_error: true
+
+    output.elasticsearch:
+      username: '${ELASTICSEARCH_USERNAME}'
+      password: '${ELASTICSEARCH_PASSWORD}'
+      hosts: '${ELASTICSEARCH_HOSTS:elasticsearch-master:9200}'
+
+    setup.template.settings:
+      index.number_of_replicas: 0
+
+    setup.ilm:
+      enabled: true
+      overwrite: true
+      policy_name: filebeat-7.4.1
+      policy_file: /usr/share/filebeat/ilm.json
+
+  ilm.json: |
+        {
+          "policy": {
+            "phases": {
+              "hot": {
+                "actions": {
+                  "rollover": {
+                    "max_age": "1d"
+                  }
+                }
+              },
+              "delete": {
+                "min_age": "20d",
+                "actions": {
+                  "delete": {}
+                }
+              }
+            }
+          }
+        }
+
+# ES username and password are passed as env vars taken from secret
+extraEnvs:
+  - name: 'ELASTICSEARCH_USERNAME'
+    valueFrom:
+      secretKeyRef:
+        name: elastic-credentials
+        key: username
+  - name: 'ELASTICSEARCH_PASSWORD'
+    valueFrom:
+      secretKeyRef:
+        name: elastic-credentials
+        key: password

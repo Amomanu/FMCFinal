@@ -1,0 +1,6 @@
+executor_name: "prometheus-am-executor"
+region: ""
+cluster_id: ""
+aadClientId: ""
+tenantId: ""
+aadClientSecret: ""

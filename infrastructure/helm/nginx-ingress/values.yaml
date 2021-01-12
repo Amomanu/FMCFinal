@@ -1,0 +1,85 @@
+controller:
+  name: controller
+  image:
+    repository: k8s.gcr.io/ingress-nginx/controller
+    tags: "v0.40.1"
+    tag: "v0.40.1"
+    pullPolicy: IfNotPresent
+    # www-data -> uid 33
+    runAsUser: 101
+    allowPrivilegeEscalation: true
+
+  config:
+    log-format-escape-json: "true"
+    log-format-upstream: '{"proxy_protocol_addr": "$proxy_protocol_addr", "remote_addr":
+      "$remote_addr", "proxy_add_x_forwarded_for": "$proxy_add_x_forwarded_for", "remote_user":
+      "$remote_user", "time_local": "$time_local", "request" : "$request", "status":
+      "$status", "body_bytes_sent": "$body_bytes_sent", "http_referer":  "$http_referer",
+      "http_user_agent": "$http_user_agent", "request_length" : "$request_length", "request_time"
+      : "$request_time", "proxy_upstream_name": "$proxy_upstream_name", "upstream_addr":
+      "$upstream_addr",  "upstream_response_length": "$upstream_response_length", "upstream_response_time":
+      "$upstream_response_time", "upstream_status": "$upstream_status", "http_host": "$http_host", "host": "$host"}'
+
+  publishService:
+    enabled: true
+
+  kind: Deployment
+
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+
+  replicaCount: 2
+
+  minAvailable: 1
+
+  resources:
+    limits:
+      cpu: 2
+      memory: 1024Mi
+    requests:
+      cpu: 100m
+      memory: 1024Mi
+
+  service:
+    type: "LoadBalancer"
+    enabled: true
+    externalTrafficPolicy: "Local"
+    loadBalancerIP: ""
+    externalIPs: []
+
+
+  metrics:
+    enabled: true
+
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "10254"
+
+    serviceMonitor:
+      enabled: false
+
+    prometheusRule:
+      enabled: false
+      additionalLabels: {}
+      namespace: ""
+      rules: []
+        # # These are just examples rules, please adapt them to your needs
+        # - alert: TooMany500s
+        #   expr: 100 * ( sum( nginx_ingress_controller_requests{status=~"5.+"} ) / sum(nginx_ingress_controller_requests) ) > 5
+        #   for: 1m
+        #   labels:
+        #     severity: critical
+        #   annotations:
+        #     description: Too many 5XXs
+        #     summary: More than 5% of the all requests did return 5XX, this require your attention
+        # - alert: TooMany400s
+        #   expr: 100 * ( sum( nginx_ingress_controller_requests{status=~"4.+"} ) / sum(nginx_ingress_controller_requests) ) > 5
+        #   for: 1m
+        #   labels:
+        #     severity: critical
+        #   annotations:
+        #     description: Too many 4XXs
+        #     summary: More than 5% of the all requests did return 4XX, this require your attention

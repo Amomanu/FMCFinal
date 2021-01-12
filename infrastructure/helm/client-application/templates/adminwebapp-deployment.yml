@@ -1,0 +1,53 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    env: {{ .Values.env }}
+    app: {{ .Values.adminwebapp.name }}-{{ .Values.env }}
+  name: {{ .Release.Name }}-adminwebapp
+spec:
+  replicas: {{ .Values.adminwebapp.replicas }}
+  selector:
+    matchLabels:
+      env: {{ .Values.env }}
+      app: {{ .Values.adminwebapp.name }}-{{ .Values.env }}
+{{- if .Values.adminwebapp.upgradeStrategy }}
+  strategy:
+{{ toYaml .Values.adminwebapp.upgradeStrategy | indent 4 }}
+{{- end }}
+  template:
+    metadata:
+      labels:
+        env: {{ .Values.env }}
+        app: {{ .Values.adminwebapp.name }}-{{ .Values.env }}
+    spec:
+      imagePullSecrets:
+        - name: registrykey
+      containers:
+        - name: adminwebapp-container
+          image: {{ .Values.adminwebapp.image }}
+          imagePullPolicy: Always
+          command: ["/usr/sbin/nginx", "-g", "daemon off;"]
+          ports:
+            - name: adminwebapp
+              containerPort: 80
+{{- if .Values.adminwebapp.livenessProbe }}
+          livenessProbe:
+{{ toYaml .Values.adminwebapp.livenessProbe | indent 12 }}
+{{- end -}}
+{{- if .Values.adminwebapp.readinessProbe }}
+          readinessProbe:
+{{ toYaml .Values.adminwebapp.readinessProbe | indent 12 }}
+{{- end -}}
+{{- if .Values.adminwebappparameters }}
+          env:
+          {{- range $key, $val := .Values.adminwebappparameters }}
+          - name: {{ $key }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-adminwebapp-parameters
+                key: {{ $key }}
+          {{- end }}
+{{- end }}
+      restartPolicy: Always

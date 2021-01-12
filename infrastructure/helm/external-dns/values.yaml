@@ -1,0 +1,38 @@
+image:
+  registry: docker.io
+  repository: bitnami/external-dns
+  tag: 0.5.17-debian-9-r66
+  pullPolicy: IfNotPresent
+
+sources:
+- ingress
+
+provider: azure
+
+azure:
+  cloud: ""
+  resourceGroup: ""
+  tenantId: ""
+  subscriptionId: ""
+  aadClientId: ""
+  aadClientSecret: ""
+  useManagedIdentityExtension: false
+
+domainFilters: []
+zoneIdFilters: []
+annotationFilter: ""
+
+interval: "1m"
+policy: create-only
+registry: "txt"
+txtOwnerId: ""
+
+replicas: 1
+
+resources:
+  limits:
+    cpu: 50m
+    memory: 50Mi
+  requests:
+    memory: 50Mi
+    cpu: 10m

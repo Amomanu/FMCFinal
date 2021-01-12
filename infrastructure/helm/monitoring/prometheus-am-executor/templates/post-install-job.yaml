@@ -1,0 +1,54 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app: {{ .Values.executor_name }}-{{ .Values.env }}
+  name: prometheus-am-executor-postinstall-job
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  template:
+    metadata:
+      name: prometheus-am-executor-postinstall-job
+      labels:
+        app: {{ .Values.executor_name }}-{{ .Values.env }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: post-install-job
+        image: "srinathkotu/prometheus-am-executor"
+        env:
+        - name: REGION
+          value: {{ .Values.region }}
+        - name: CLUSTER_ID
+          value: {{ .Values.cluster_id }}
+        - name: AAD_CLIENT_ID
+          value: {{ .Values.aadClientId }}
+        - name: TENANT_ID
+          value: {{ .Values.tenantId }}
+        - name: CLIENT_SECRET
+          value: {{ .Values.aadClientSecret }}
+        - name: AMX_STATUS
+          value: firing
+        - name: AMX_EXTERNAL_URL
+          value: post-install-job
+        command:
+        - bash
+        - /executor.sh
+        volumeMounts:
+          - name: executor-script
+            mountPath: /executor.sh
+            subPath: executor.sh
+          - name: azure-json
+            mountPath: /azure.json
+      volumes:
+      - name: executor-script
+        configMap:
+          name: executor-script
+          defaultMode: 0755
+      - name: azure-json
+        hostPath:
+          path: /etc/kubernetes/azure.json
+          type: File

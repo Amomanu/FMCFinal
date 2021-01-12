@@ -1,0 +1,104 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    env: {{ .Values.env }}
+    app: {{ .Values.celery.name }}-{{ .Values.env }}
+  name: {{ .Release.Name }}-celery
+spec:
+  replicas: {{ .Values.celery.replicas }}
+  selector:
+    matchLabels:
+      env: {{ .Values.env }}
+      app: {{ .Values.celery.name }}-{{ .Values.env }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        env: {{ .Values.env }}
+        app: {{ .Values.celery.name }}-{{ .Values.env }}
+    spec:
+      imagePullSecrets:
+        - name: registrykey
+      containers:
+        - name: celery-container
+          image: {{ .Values.celery.image }}
+          imagePullPolicy: Always
+          command: ["celery"]
+          args: ["worker", "-E", "-B", "--autoscale=20,15", "--loglevel=INFO", "-Ofair", "--hostname=serverredisworker", "--app=fmc_alpha.celery_app:app"]
+          ports:
+            - containerPort: 8008
+{{- if .Values.parameters }}
+          env:
+          {{- range $key, $val := .Values.parameters }}
+          - name: {{ $key }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-backend-parameters
+                key: {{ $key }}
+          {{- end }}
+{{- end }}
+      restartPolicy: Always
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    env: {{ .Values.env }}
+    app: {{ .Values.flower.name }}-{{ .Values.env }}
+  name: {{ .Release.Name }}-flower
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      env: {{ .Values.env }}
+      app: {{ .Values.flower.name }}-{{ .Values.env }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        env: {{ .Values.env }}
+        app: {{ .Values.flower.name }}-{{ .Values.env }}
+    spec:
+      imagePullSecrets:
+        - name: registrykey
+      containers:
+        - name: {{ .Release.Name }}-flower
+          image: {{ .Values.celery.image }}
+          imagePullPolicy: Always
+          command: ["celery"]
+          args: ["flower", "--broker", "$(BROKER_URL)", "--basic_auth={{ .Values.parameters.FLOWERCRED }}"]
+          ports:
+            - containerPort: 5555
+          readinessProbe:
+            tcpSocket:
+              port: 5555
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 5555
+            initialDelaySeconds: 15
+            periodSeconds: 20
+{{- if .Values.parameters }}
+          env:
+          {{- range $key, $val := .Values.parameters }}
+          - name: {{ $key }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-backend-parameters
+                key: {{ $key }}
+          {{- end }}
+{{- end }}
+
+      restartPolicy: Always

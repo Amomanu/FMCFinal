@@ -1,0 +1,33 @@
+{{- if .Capabilities.APIVersions.Has "monitoring.coreos.com/v1" }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Values.app }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.app }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  groups:
+{{- range .Values.alert_groups }}
+  - name: {{ .name }}
+    rules:
+{{ toYaml .alerts | indent 4 }}
+{{- end }}
+{{- if .Values.azure_service_principals }}
+  - name: azure
+    rules:
+{{- range $index, $sp := .Values.azure_service_principals }}
+    - alert: ServicePrincipalPasswordExpiration{{ $index }}
+      expr: 'vector(time()) > {{ $sp.end_date_timestamp }} - 86400 * 30'
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        message: Azure service principal ({{ $sp.id }}) password will expire in 30 days.
+{{- end }}
+{{- end }}
+{{- end }}

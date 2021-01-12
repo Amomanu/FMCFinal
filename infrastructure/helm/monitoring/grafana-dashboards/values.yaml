@@ -1,0 +1,4 @@
+dashboard_files_folder: dashboards
+
+labels:
+  grafana_dashboard: "true"

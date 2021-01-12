@@ -1,0 +1,146 @@
+env: name_of_the_environment
+
+imageCredentials:
+  registry: client.azurecr.io
+  username: user
+  password: secret
+
+storageClass:
+  name: "staticfiles"
+  skuName: "Standard_LRS"
+  mountOptions:
+    - dir_mode=0777
+    - file_mode=0777
+    - uid=1000
+    - gid=1000
+    - mfsymlinks
+    - nobrl
+    - cache=none
+
+pvc:
+  size: 100Mi
+
+backend:
+  name: backend
+  image: client.azurecr.io/backendapp-devops:latest
+  replicas: 2
+  staticfilesVolumeName: staticfiles
+  staticfilesMountPath: /opt/services/app/src/staticfiles
+
+  upgradeStrategy:
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+    type: RollingUpdate
+
+  livenessProbe:
+    tcpSocket:
+      port: 8000
+    periodSeconds: 10
+    timeoutSeconds: 20
+    successThreshold: 1
+    failureThreshold: 5
+    initialDelaySeconds: 120
+
+  readinessProbe:
+    tcpSocket:
+      port: 8000
+    periodSeconds: 10
+    timeoutSeconds: 20
+    successThreshold: 1
+    failureThreshold: 3
+    initialDelaySeconds: 120 
+
+adminwebapp:
+  name: adminwebapp
+  image: client.azurecr.io/devops/adminwebapp:latest
+  replicas: 2
+
+  upgradeStrategy:
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+    type: RollingUpdate
+
+  livenessProbe:
+    tcpSocket:
+      port: 80
+    initialDelaySeconds: 15
+    periodSeconds: 20
+
+  readinessProbe:
+    tcpSocket:
+      port: 80
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+celery:
+  name: celery
+  image: client.azurecr.io/backendapp-devops:latest
+  replicas: 1
+
+flower:
+  name: flower
+  image: client.azurecr.io/backendapp-devops:latest
+  replicas: 1
+
+nginxweb:
+  app_name: client-app
+  name: nginxweb
+  image: nginx:1.17
+  replicas: 1
+  staticfilesVolumeName: staticfiles
+  staticfilesMountPath: /staticfiles
+
+  ingress:
+    name: clientapp-ingress
+    annotations:
+      # cert-manager.io/cluster-issuer: letsencrypt-prod
+      kubernetes.io/ingress.class: nginx
+    domainName: domain-name.com
+    starDomainName: star-domain-name.com
+
+parameters:
+  # Celery specific:
+  C_FORCE_ROOT: "true"
+  # Common parameters:
+  DEBUG: "true"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_NAME: ""
+  DB_USER: ""
+  DB_PASSWORD: ""
+  GOOGLE_MAPS_API_KEY: ""
+  AZURE_ACCOUNT_NAME: ""
+  AZURE_ACCOUNT_KEY: ""
+  AZURE_CONTAINER: ""
+  BRANCH_KEY: ""
+  EMAIL_PORT: ""
+  EMAIL_USE_TLS: "true"
+  EMAIL_HOST: ""
+  EMAIL_HOST_USER: ""
+  EMAIL_HOST_PASSWORD: ""
+  SENDGRID_API_KEY: ""
+  DOMAIN_URL: ""
+  DEFAULT_FROM_EMAIL: ""
+  BROKER_URL: ""
+  CELERY_RESULT_BACKEND: ""
+  FIREBASE_SECRET: ""
+  FIREBASE_ID: ""
+  TWILIO_FROM_TEL: ""
+  TWILIO_ACCOUNT_SID: ""
+  TWILIO_AUTH_TOKEN: ""
+  FASTFIELD_USERNAME: ""
+  FASTFIELD_PASSWORD: ""
+  FASTFIELD_API_KEY: ""
+  FASTFIELD_URL: ""
+  AZURE_DNS_CLIENT: ""
+  AZURE_DNS_KEY: ""
+  AZURE_SUBSCRIPTION_ID: ""
+  AZURE_DNS_TENANT_ID: ""
+  FLOWERCRED: ""
+
+adminwebappparameters:
+  FIREBASE_ID: ""
+  BACKEND_API_URL: "" 
+

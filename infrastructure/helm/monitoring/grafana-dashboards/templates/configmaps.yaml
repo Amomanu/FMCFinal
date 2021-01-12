@@ -1,0 +1,17 @@
+{{ $root := . }}
+{{ $files := .Files }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "grafana-dashboards.name" $ }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app: {{ template "grafana-dashboards.name" $ }}
+    chart: {{ template "grafana-dashboards.chart" $ }}
+    release: {{ $.Release.Name }}
+    heritage: {{ $.Release.Service }}
+{{- if .Values.labels }}
+{{ toYaml .Values.labels | indent 4 }}
+{{- end }}
+data:
+  {{- (.Files.Glob (printf "%s%s" .Values.dashboard_files_folder "/*.json" )).AsConfig | nindent 1 }}

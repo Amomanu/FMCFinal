@@ -1,0 +1,283 @@
+namespace: monitoring
+app: prometheus-alerts
+
+azure_service_principals:
+  - id: 123456789
+    end_date_timestamp: 123456789
+
+alert_groups:
+  # Replacement for kubernetes-system alerts built-in to Prometheus Operator but having different thresholds
+  - name: kubernetes-system-custom
+    alerts:
+    - alert: KubeNodeNotReady
+      annotations:
+        message: '{{`{{ $labels.node }}`}} has been unready for more than an hour.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubenodenotready
+      expr: kube_node_status_condition{job="kube-state-metrics",condition="Ready",status="true"} == 0
+      for: 1h
+      labels:
+        severity: warning
+    - alert: KubeVersionMismatch
+      annotations:
+        message: There are {{`{{ $value }}`}} different semantic versions of Kubernetes components running.
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeversionmismatch
+      expr: count(count by (gitVersion) (label_replace(kubernetes_build_info{job!~"kube-dns|coredns"},"gitVersion","$1","gitVersion","(v[0-9]*.[0-9]*.[0-9]*).*"))) > 1
+      for: 1h
+      labels:
+        severity: warning
+    - alert: KubeClientErrors
+      annotations:
+        message: Kubernetes API server client '{{`{{ $labels.job }}`}}/{{`{{ $labels.instance }}`}}' is experiencing {{`{{ printf "%0.0f" $value }}`}}% errors.'
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeclienterrors
+      expr: |-
+        (sum(rate(rest_client_requests_total{code=~"5.."}[5m])) by (instance, job)
+          /
+        sum(rate(rest_client_requests_total[5m])) by (instance, job))
+        * 100 > 1
+      for: 15m
+      labels:
+        severity: warning
+    - alert: KubeClientErrors
+      annotations:
+        message: Kubernetes API server client '{{`{{ $labels.job }}`}}/{{`{{ $labels.instance }}`}}' is experiencing {{`{{ printf "%0.0f" $value }}`}} errors / second.
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeclienterrors
+      expr: sum(rate(ksm_scrape_error_total{job="kube-state-metrics"}[5m])) by (instance, job) > 0.1
+      for: 15m
+      labels:
+        severity: warning
+    - alert: KubeletTooManyPods
+      annotations:
+        message: Kubelet {{`{{ $labels.instance }}`}} is running {{`{{ $value }}`}} Pods, close to the limit of 110.
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubelettoomanypods
+      expr: kubelet_running_pod_count{job="kubelet"} > 110 * 0.9
+      for: 15m
+      labels:
+        severity: warning
+    - alert: KubeAPILatencyHigh
+      annotations:
+        message: The API server has a 90th percentile latency of {{`{{ $value }}`}} seconds for {{`{{ $labels.verb }}`}} {{`{{ $labels.resource }}`}}.
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapilatencyhigh
+      expr: cluster_quantile:apiserver_request_latencies:histogram_quantile{job="apiserver",quantile="0.9",subresource!="log",verb!~"^(?:LIST|WATCH|WATCHLIST|PROXY|CONNECT)$"} > 2
+      for: 15m
+      labels:
+        severity: warning
+    - alert: KubeAPILatencyHigh
+      annotations:
+        message: The API server has a 90th percentile latency of {{`{{ $value }}`}} seconds for {{`{{ $labels.verb }}`}} {{`{{ $labels.resource }}`}}.
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapilatencyhigh
+      expr: cluster_quantile:apiserver_request_latencies:histogram_quantile{job="apiserver",quantile="0.9",subresource!="log",verb!~"^(?:LIST|WATCH|WATCHLIST|PROXY|CONNECT)$"} > 7
+      for: 15m
+      labels:
+        severity: critical
+    - alert: KubeAPIErrorsHigh
+      annotations:
+        message: API server is returning errors for {{`{{ $value }}`}}% of requests.
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorshigh
+      expr: |-
+        sum(rate(apiserver_request_count{job="apiserver",code=~"^(?:5..)$"}[5m]))
+          /
+        sum(rate(apiserver_request_count{job="apiserver"}[5m])) * 100 > 3
+      for: 10m
+      labels:
+        severity: critical
+    - alert: KubeAPIErrorsHigh
+      annotations:
+        message: API server is returning errors for {{`{{ $value }}`}}% of requests.
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorshigh
+      expr: |-
+        sum(rate(apiserver_request_count{job="apiserver",code=~"^(?:5..)$"}[5m]))
+          /
+        sum(rate(apiserver_request_count{job="apiserver"}[5m])) * 100 > 1
+      for: 10m
+      labels:
+        severity: warning
+    - alert: KubeAPIErrorsHigh
+      annotations:
+        message: API server is returning errors for {{`{{ $value }}`}}% of requests for {{`{{ $labels.verb }}`}} {{`{{ $labels.resource }}`}} {{`{{ $labels.subresource }}`}}.
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorshigh
+      expr: |-
+        sum(rate(apiserver_request_count{job="apiserver",code=~"^(?:5..)$"}[5m])) by (resource,subresource,verb)
+          /
+        sum(rate(apiserver_request_count{job="apiserver"}[5m])) by (resource,subresource,verb) * 100 > 10
+      for: 10m
+      labels:
+        severity: critical
+    - alert: KubeAPIErrorsHigh
+      annotations:
+        message: API server is returning errors for {{`{{ $value }}`}}% of requests for {{`{{ $labels.verb }}`}} {{`{{ $labels.resource }}`}} {{`{{ $labels.subresource }}`}}.
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeapierrorshigh
+      expr: |-
+        sum(rate(apiserver_request_count{job="apiserver",code=~"^(?:5..)$"}[5m])) by (resource,subresource,verb)
+          /
+        sum(rate(apiserver_request_count{job="apiserver"}[5m])) by (resource,subresource,verb) * 100 > 5
+      for: 10m
+      labels:
+        severity: warning
+    - alert: KubeClientCertificateExpiration
+      annotations:
+        message: A client certificate used to authenticate to the apiserver is expiring in less than 7.0 days.
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeclientcertificateexpiration
+      expr: apiserver_client_certificate_expiration_seconds_count{job="apiserver"} > 0 and histogram_quantile(0.01, sum by (job, le) (rate(apiserver_client_certificate_expiration_seconds_bucket{job="apiserver"}[5m]))) < 604800
+      labels:
+        severity: warning
+    - alert: KubeClientCertificateExpiration
+      annotations:
+        message: A client certificate used to authenticate to the apiserver is expiring in less than 24.0 hours.
+        runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubeclientcertificateexpiration
+      expr: apiserver_client_certificate_expiration_seconds_count{job="apiserver"} > 0 and histogram_quantile(0.01, sum by (job, le) (rate(apiserver_client_certificate_expiration_seconds_bucket{job="apiserver"}[5m]))) < 86400
+      labels:
+        severity: critical
+
+  - name: node
+    alerts:
+    - record: node:node_memory_usage:percent
+      expr: (sum by (instance) (node_memory_MemTotal_bytes - node_memory_MemFree_bytes - node_memory_Buffers_bytes -
+                                node_memory_Cached_bytes)) / (sum by (instance) (node_memory_MemTotal_bytes)) * 100
+    - alert: NodeCpuUsageHigh
+      expr: '(100 * instance:node_cpu:rate:sum) > 65'
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        message: Node `{{ $labels.instance }}` CPU load is {{ printf "%.0f" $value }}%
+    - alert: NodeCpuUsageCritical
+      expr: '(100 * instance:node_cpu:rate:sum) > 85'
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        message: Node `{{ $labels.instance }}` CPU load is {{ printf "%.0f" $value }}%
+    - alert: NodeMemUsageHigh
+      expr: 'node:node_memory_usage:percent > 75'
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        message: Node `{{ $labels.instance }}` memory usage is {{ printf "%.0f" $value }}%
+    - alert: NodeMemUsageCritical
+      expr: 'node:node_memory_usage:percent > 90'
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        message: Node `{{ $labels.instance }}` memory usage is {{ printf "%.0f" $value }}%
+
+  - name: cert-manager
+    alerts:
+    - alert: CertManagerCertExpiresSoon
+      expr: '(certmanager_certificate_expiration_timestamp_seconds - time()) < 30*24*3600'
+      for: 1m
+      labels:
+        severity: warning
+      annotations:
+        message: Certificate `{{ $labels.exported_namespace }}/{{ $labels.name }}` expires within the next 30 days
+    - alert: CertManagerCertExpiresSoon
+      expr: '(certmanager_certificate_expiration_timestamp_seconds - time()) < 14*24*3600'
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        message: Certificate `{{ $labels.exported_namespace }}/{{ $labels.name }}` expires within the next 14 days
+
+  - name: postgres
+    alerts:
+    - alert: PostgresqlDown
+      expr: pg_up == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        message: PostgreSQL down (instance {{ $labels.instance }})
+    - alert: PostgresqlReplicationLag
+      expr: pg_replication_lag > 10
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        message: PostgreSQL replication lag is going up ({{ $value }}s) (instance {{ $labels.instance }})
+    - alert: PostgresqlTooManyConnections
+      expr: sum by (datname) (pg_stat_activity_count{datname!~"template.*|postgres"}) > 90
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        message: PostgreSQL instance has too many connections (instance {{ $labels.instance }})
+    - alert: PostgresqlDeadLocks
+      expr: rate(pg_stat_database_deadlocks{datname!~"template.*|postgres"}[1m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        message: PostgreSQL has dead-locks (instance {{ $labels.instance }})
+    - alert: PostgresqlSlowQueries
+      expr: avg(rate(pg_stat_activity_max_tx_duration{datname!~"template.*"}[1m])) BY (datname) > 10
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        description: "PostgreSQL executes slow queries ({{ $value }}s) (instance {{ $labels.instance }})"
+
+  - name: redis
+    alerts:
+    - alert: RedisDown
+      expr: redis_up == 0
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: Redis down (instance {{ $labels.instance }} )
+        description: Redis instance is down
+
+    # - alert: MissingBackup
+    #   expr: time() - redis_rdb_last_save_timestamp_seconds > 60 * 60 * 24
+    #   for: 5m
+    #   labels:
+    #     severity: error
+    #   annotations:
+    #     summary: Missing backup (instance {{ $labels.instance }})
+    #     description: "Redis has not been backuped for 24 hours"
+
+    - alert: OutOfMemory
+      expr: redis_memory_used_bytes / redis_total_system_memory_bytes * 100 > 90
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Out of memory (instance {{ $labels.instance }} )"
+        description: "Redis is running out of memory (> 90%). Current value: {{ $value }}"
+
+    - alert: ReplicationBroken
+      expr: delta(redis_connected_slaves[1m]) < 0
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Replication broken (instance {{ $labels.instance }} )"
+        description: "Redis instance lost a slave"
+
+    - alert: TooManyConnections
+      expr: redis_connected_clients > 100
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Too many connections (instance {{ $labels.instance }} )"
+        description: "Redis instance has too many connections. Current value: {{ $value }}"
+
+    - alert: NotEnoughConnections
+      expr: redis_connected_clients < 5
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Not enough connections (instance {{ $labels.instance }} )"
+        description: "Redis instance should have more connections (> 5). Current value: {{ $value }}"
+
+    - alert: RejectedConnections
+      expr: increase(redis_rejected_connections_total[1m]) > 0
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Rejected connections (instance {{ $labels.instance }} )"
+        description: "Some connections to Redis has been rejected. Current value: {{ $value }}"

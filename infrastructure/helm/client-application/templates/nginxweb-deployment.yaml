@@ -1,0 +1,52 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    env: {{ .Values.env }}
+    app: {{ .Values.nginxweb.name }}-{{ .Values.env }}
+  name: {{ .Release.Name }}-nginxweb
+spec:
+  replicas: {{ .Values.nginxweb.replicas }}
+  selector:
+    matchLabels:
+      env: {{ .Values.env }}
+      app: {{ .Values.nginxweb.name }}-{{ .Values.env }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        env: {{ .Values.env }}
+        app: {{ .Values.nginxweb.name }}-{{ .Values.env }}
+    spec:
+      containers:
+      - image: {{ .Values.nginxweb.image }}
+        name: nginx-container
+        ports:
+        - containerPort: 80
+        resources: {}
+        volumeMounts:
+        - name: nginx-main
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: nginx-addon
+          mountPath: /etc/nginx/conf.d/
+        - name: {{ .Values.nginxweb.staticfilesVolumeName }}
+          mountPath: {{ .Values.nginxweb.staticfilesMountPath }}
+        - name: log
+          mountPath: /var/log/nginx
+
+      restartPolicy: Always
+      volumes:
+      - name: nginx-main
+        configMap:
+          name: {{ .Release.Name }}-nginx-main
+      - name: nginx-addon
+        configMap:
+          name: {{ .Release.Name }}-nginx-addon
+      - name: {{ .Values.nginxweb.staticfilesVolumeName }}
+        persistentVolumeClaim:
+          claimName: {{ .Release.Name }}-pvc
+      - name: log
+        emptyDir: {}

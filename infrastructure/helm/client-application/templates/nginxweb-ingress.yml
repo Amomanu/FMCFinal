@@ -1,0 +1,43 @@
+{{- $fullSvcName := include "svcname" . -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ .Values.nginxweb.ingress.name }}
+{{- with .Values.nginxweb.ingress.annotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+  name: {{ .Values.nginxweb.ingress.name }}
+  namespace: default
+spec:
+  rules:
+  # - host: {{ .Values.nginxweb.ingress.domainName }}
+  #   http:
+  #     paths:
+  #     - backend:
+  #         serviceName: {{ $fullSvcName }}
+  #         servicePort: 80
+  #       path: /
+  - host: celerytasks-{{ .Values.nginxweb.ingress.domainName }}
+    http:
+      paths:
+      - backend:
+          serviceName: {{ .Values.nginxweb.app_name }}-{{ .Values.flower.name }}
+          servicePort: 5555
+        path: /
+  - host: "{{ .Values.nginxweb.ingress.starDomainName }}"
+    http:
+      paths:
+      - backend:
+          serviceName: {{ $fullSvcName }}
+          servicePort: 80
+        path: /
+  tls:
+  - hosts:
+    # - celerytasks-{{ .Values.nginxweb.ingress.domainName }}
+    # - {{ .Values.nginxweb.ingress.domainName }}
+    - "{{ .Values.nginxweb.ingress.starDomainName }}"
+    # - '*.{{ .Values.dns_zone }}'
+    secretName: rapidssl-cert
+    # - {{ .Values.nginxweb.ingress.domainName }}
+    # secretName: {{ .Release.Name }}-ca-secret

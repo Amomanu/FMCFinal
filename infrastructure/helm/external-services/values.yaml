@@ -1,0 +1,4 @@
+services:
+- name: postgres
+  namespace: default
+  externalName: client-postgres-demo.eastus.cloudapp.azure.com

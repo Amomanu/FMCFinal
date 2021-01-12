@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ .Values.adminwebapp.name }}-{{ .Values.env }}
+  name: {{ .Release.Name }}-adminwebapp
+spec:
+  ports:
+  - name: {{ .Values.backend.name }}-{{ .Values.env }}
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: {{ .Values.adminwebapp.name }}-{{ .Values.env }}

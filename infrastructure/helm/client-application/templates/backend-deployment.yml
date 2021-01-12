@@ -1,0 +1,60 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    env: {{ .Values.env }}
+    app: {{ .Values.backend.name }}-{{ .Values.env }}
+  name: {{ .Release.Name }}-backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      env: {{ .Values.env }}
+      app: {{ .Values.backend.name }}-{{ .Values.env }}
+{{- if .Values.backend.upgradeStrategy }}
+  strategy:
+{{ toYaml .Values.backend.upgradeStrategy | indent 4 }}
+{{- end }}
+  template:
+    metadata:
+      labels:
+        env: {{ .Values.env }}
+        app: {{ .Values.backend.name }}-{{ .Values.env }}
+    spec:
+      imagePullSecrets:
+        - name: registrykey
+      containers:
+        - name: backend-container
+          image: {{ .Values.backend.image }}
+          imagePullPolicy: Always
+          command: ["/opt/services/app/src/entrypoint.sh"]
+          ports:
+            - name: web
+              containerPort: 8000
+          volumeMounts:
+            - mountPath: {{ .Values.backend.staticfilesMountPath }}
+              name: {{ .Values.backend.staticfilesVolumeName }}
+{{- if .Values.backend.livenessProbe }}
+          livenessProbe:
+{{ toYaml .Values.backend.readinessProbe | indent 12 }}
+{{- end -}}
+{{- if .Values.backend.readinessProbe }}
+          readinessProbe:
+{{ toYaml .Values.backend.readinessProbe | indent 12 }}
+{{- end -}}
+{{- if .Values.parameters }}
+          env:
+          {{- range $key, $val := .Values.parameters }}
+          - name: {{ $key }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-backend-parameters
+                key: {{ $key }}
+          {{- end }}
+{{- end }}
+      restartPolicy: Always
+      volumes:
+        - name: {{ .Values.backend.staticfilesVolumeName }}
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-pvc
